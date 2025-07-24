@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>THREEjs</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen" style="
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        color: #0f0;
+        font-family: monospace;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        z-index: 9999;">
+        Loading... <span id="loading-percentage">0%</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://mrdoob.github.io/stats.js/build/stats.min.js"></script>
+    <script src="https://unpkg.com/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script type="module">
+        import * as CANNON from 'https://cdn.skypack.dev/cannon-es';
+        window.CANNON = CANNON; // expose globally
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="client.js"></script>
+</body>
+</html>
