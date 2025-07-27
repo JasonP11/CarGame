@@ -1,7 +1,6 @@
 
     console.log('CANNON loaded:', CANNON); // should show full object
     const scene = new THREE.Scene();
-    let model;
     const socket = io(); 
     const world = new CANNON.World();
     world.gravity.set(0, -9.82, 0); // Earth gravity
@@ -85,6 +84,7 @@
 
         const gltfLoader = new THREE.GLTFLoader(loadingManager);
 
+        let model;
 
         gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/chassis.glb', (gltf) => {
         model = gltf.scene;
@@ -96,12 +96,12 @@
             child.castShadow = true;
             child.receiveShadow = true;
             }
+
+            
         });
 
         scene.add(model);
 
-        // checkAllModelsLoaded(); // <- ADD THIS
-        // Optional: move camera or update logic to follow this model
         }, undefined, (error) => {
         console.error('An error happened while loading the model:', error);
         });
@@ -208,6 +208,7 @@
         scene.add(helper);
 
         const otherPlayers = {};  
+        const visualOffset = new THREE.Vector3(0, -0.6, 0); // ✅ Global, shared everywhere
 
         // This must be OUTSIDE animate() to avoid multiple listeners!
         socket.on('playerMoved', data => {
@@ -216,15 +217,22 @@
             let other = otherPlayers[data.id];
 
             if (!other) {
-                const geom = new THREE.BoxGeometry(1, 1, 1);
-                const mat = new THREE.MeshStandardMaterial({ color: 0x0000ff });
-                const cube = new THREE.Mesh(geom, mat);
-                scene.add(cube);
-                otherPlayers[data.id] = cube;
-                other = cube;
+                const clone = model.clone(true);
+                scene.add(clone);
+                otherPlayers[data.id] = clone;
+                other = clone;
             }
+            // ✅ Reconstruct quaternion
+            const q = new THREE.Quaternion(data.qx, data.qy, data.qz, data.qw);
 
-            other.position.set(data.x, data.y, data.z);
+            // ✅ Apply visual offset based on rotation
+            const offset = visualOffset.clone().applyQuaternion(q);
+            other.position.set(data.x, data.y, data.z).add(offset);
+            other.quaternion.copy(q);
+
+            // ✅ Optional: You now also have velocity data
+            const velocity = new THREE.Vector3(data.vx, data.vy, data.vz);
+            // You can use `velocity` for interpolation, debugging, or effects if needed
         });
 
         let isUserInteracting = false;
@@ -326,7 +334,7 @@
 
             if(model && chassisBody){
                 // Offset vector (e.g., 0.5 units down on Y axis)
-                const visualOffset = new THREE.Vector3(0, -0.6, 0);
+                // const visualOffset = new THREE.Vector3(0, -0.6, 0);
                 // Create a copy of chassisBody's quaternion and rotate the offset
                 const offset = visualOffset.clone().applyQuaternion(chassisBody.quaternion);
                 // Apply offset to the position
@@ -369,11 +377,18 @@
             }
 
 
-            if (frameCount % 30 === 0 && chassisBody) {
-                const { x, y, z } = chassisBody.position;
-                console.log(`📍 My position: x=${x.toFixed(2)}, y=${y.toFixed(2)}, z=${z.toFixed(2)}`);
-                socket.emit('move', { x, y, z });
+            if (frameCount % 2 === 0 && chassisBody) { // Send 30x/sec if running at 60fps
+                const pos = chassisBody.position;
+                const vel = chassisBody.velocity;
+                const quat = chassisBody.quaternion;
+
+                socket.emit('move', {
+                    x: pos.x, y: pos.y, z: pos.z,
+                    vx: vel.x, vy: vel.y, vz: vel.z,
+                    qx: quat.x, qy: quat.y, qz: quat.z, qw: quat.w
+                });
             }
+
             socket.on('playerMoved', data => {
             console.log(`🔄 Player ${data.id} moved to x=${data.x}, y=${data.y}, z=${data.z}`);
             // Update other players in the game world here
