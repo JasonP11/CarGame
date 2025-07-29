@@ -81,15 +81,7 @@
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         world.addBody(groundBody);
 
-        const gltfLoader = new THREE.GLTFLoader(loadingManager);
-
-/*         const player = createVehicleAt(scene, world, 0, 3, 0, gltfLoader);
-        const player1 = createVehicleAt(scene, world, 0, 3, 10, gltfLoader);
-        if (player1.model && player1.chassisBody) {
-            player1.model.position.copy(player1.chassisBody.position);
-            player1.model.quaternion.copy(player1.chassisBody.quaternion);
-        } */
-
+        const gltfLoader = new THREE.GLTFLoader(loadingManager)
 
         let model;       // For local player visual
         let baseModel;   // Internal clone source
@@ -158,12 +150,6 @@
             }
         });
 
-/*                     socket.on('playerMoved', data => {
-            console.log(`🔄 Player ${data.id} moved to x=${data.x}, y=${data.y}, z=${data.z}`);
-            // Update other players in the game world here
-            }); */
-
-        
 
         const light = new THREE.DirectionalLight(0xffffff, 1);
         light.position.set(20, 50, 20);
@@ -256,7 +242,7 @@
         // let smoothedLookTarget = new THREE.Vector3();
         const cameraOffset = new THREE.Vector3(0, 2, 5);
         
-        let fpsInterval = 1000 / 30; // 33.33ms
+        // let fpsInterval = 1000 / 150; // 33.33ms
         let then = performance.now();
         
         let frameCount = 0;
@@ -266,8 +252,8 @@
             const now = time;
             const elapsed = now - then;
 
-            if (elapsed >= fpsInterval) {
-                then = now - (elapsed % fpsInterval); // prevent drift
+            // if (elapsed >= fpsInterval) {
+                // then = now - (elapsed % fpsInterval); // prevent drift
 
 
             stats.begin();
@@ -365,7 +351,7 @@
             renderer.render(scene, camera);
         
         }
-    }
+    // }
         animate();
 
         window.addEventListener('resize', () => {
