@@ -33,10 +33,17 @@ io.on('connection', socket => {
 
   // Broadcast to all other clients
   socket.broadcast.emit('playerMoved', {
-    id: socket.id,
-    x: data.x,
-    y: data.y,
-    z: data.z
+        id: socket.id,
+        x: data.x,
+        y: data.y,
+        z: data.z,
+        vx: data.vx,
+        vy: data.vy,
+        vz: data.vz,
+        qx: data.qx,
+        qy: data.qy,
+        qz: data.qz,
+        qw: data.qw
   });
   });
 

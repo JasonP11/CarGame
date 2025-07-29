@@ -1,7 +1,7 @@
+    import { createVehicleAt } from './vehicle.js';
 
     console.log('CANNON loaded:', CANNON); // should show full object
     const scene = new THREE.Scene();
-    let model;
     const socket = io(); 
     const world = new CANNON.World();
     world.gravity.set(0, -9.82, 0); // Earth gravity
@@ -74,8 +74,6 @@
         plane.receiveShadow = true;
         scene.add(plane);
 
-       
-
         // CANNON ground
         const groundShape = new CANNON.Plane();
         const groundBody = new CANNON.Body({ mass: 0 });
@@ -85,108 +83,87 @@
 
         const gltfLoader = new THREE.GLTFLoader(loadingManager);
 
+/*         const player = createVehicleAt(scene, world, 0, 3, 0, gltfLoader);
+        const player1 = createVehicleAt(scene, world, 0, 3, 10, gltfLoader);
+        if (player1.model && player1.chassisBody) {
+            player1.model.position.copy(player1.chassisBody.position);
+            player1.model.quaternion.copy(player1.chassisBody.quaternion);
+        } */
+
+
+        let model;       // For local player visual
+        let baseModel;   // Internal clone source
+        let player, player1; // Declare globally so you can use in animate()
 
         gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/chassis.glb', (gltf) => {
-        model = gltf.scene;
-        model.position.set(0, 0, 0);
-        model.scale.set(1, 1, 1);
+            baseModel = gltf.scene;
 
-        model.traverse((child) => {
-            if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
+            baseModel.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+
+            // Local player model
+            model = baseModel.clone(true);
+            model.position.set(0, 0, 0);
+            model.scale.set(1, 1, 1);
+            scene.add(model);
+
+            // Remote player model
+            const body = baseModel.clone(true);
+            scene.add(body);
+
+            if (!window._playerAssigned) {
+                window._playerAssigned = true;
+                const isFirstPlayer = socket.id.endsWith("0") || Math.random() > 0.5; // crude split for 2 clients
+
+                if (isFirstPlayer) {
+                    player = createVehicleAt(scene, world, 0, 3, 0, gltfLoader);
+                    player.model = model;
+
+                    player1 = createVehicleAt(scene, world, 0, 3, 10, gltfLoader);
+                    player1.model = body;
+                } else {
+                    player1 = createVehicleAt(scene, world, 0, 3, 0, gltfLoader);
+                    player1.model = body;
+
+                    player = createVehicleAt(scene, world, 0, 3, 10, gltfLoader);
+                    player.model = model;
+                }
+                }
+
+
+            // Optional: sync initial position
+            if (player1.model && player1.chassisBody) {
+                player1.model.position.copy(player1.chassisBody.position);
+                player1.model.quaternion.copy(player1.chassisBody.quaternion);
             }
-        });
 
-        scene.add(model);
-
-        // checkAllModelsLoaded(); // <- ADD THIS
-        // Optional: move camera or update logic to follow this model
         }, undefined, (error) => {
-        console.error('An error happened while loading the model:', error);
+            console.error('An error happened while loading the model:', error);
         });
 
-        // 1. Create the chassis body
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2)); // Width, height, length (half extents)
-        const chassisBody = new CANNON.Body({ mass: 150 });
-        chassisBody.addShape(chassisShape);
-        chassisBody.position.set(0, 3, 0);
-        chassisBody.angularDamping = 0.5;
-        world.addBody(chassisBody);
 
-        const chassisWireGeo = new THREE.BoxGeometry(2, 1, 4); // Same full extents as chassisShape (2x0.5x2)
-        const chassisWireMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-        const chassisWire = new THREE.Mesh(chassisWireGeo, chassisWireMat);
-        scene.add(chassisWire);
+        socket.on('playerMoved', data => {
+            if (data.id === socket.id) return; // Ignore own movement
 
-        // Vehicle
-        const vehicle = new CANNON.RaycastVehicle({
-        chassisBody,
-        indexRightAxis: 0,
-        indexUpAxis: 1,
-        indexForwardAxis: 2,
-        });
+            // No need to clone again – we already assigned player1.model in gltfLoader callback
 
-        const wheelMeshes = [];
-        const wheelRadius = 0.35;
-
-        const wheelOptions = {
-        radius: wheelRadius,
-        directionLocal: new CANNON.Vec3(0, -1, 0),          // down
-        suspensionStiffness: 30,
-        suspensionRestLength: 0.3,
-        frictionSlip: 5,
-        dampingRelaxation: 2.3,
-        dampingCompression: 4.4,
-        maxSuspensionForce: 100000,
-        rollInfluence: 0.01,
-        axleLocal: new CANNON.Vec3(-1, 0, 0),               // left
-        maxSuspensionTravel: 0.3,
-        customSlidingRotationalSpeed: -30,
-        useCustomSlidingRotationalSpeed: true
-        };
-
-        const wheelPositions = [
-            new CANNON.Vec3(-0.858, 0, 1.75), // Rear-left
-            new CANNON.Vec3(0.76, 0, 1.78),  // Rear-right
-            new CANNON.Vec3(-0.858, 0, -1.15),// Front-left
-            new CANNON.Vec3(0.76, 0, -1.15), // Front-right
-        ];
-
-        wheelPositions.forEach(pos => {
-            const options = {
-                ...wheelOptions, // shallow clone
-                chassisConnectionPointLocal: pos.clone() // unique Vec3 instance
-            };
-            vehicle.addWheel(options);
-        });
-
-        vehicle.addToWorld(world);
-        chassisBody.position.set(0, 3, 0);
-
-
-         vehicle.wheelInfos.forEach((wheel, index) => {
-         gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/wheels.glb', gltf => {
-             const wheelModel = gltf.scene;
-
-             // Scale and rotate if needed
-             wheelModel.scale.set(1, 1, 1); // Adjust to your model size
-             wheelModel.rotation.x = Math.PI / 2; // Align rotation if necessary
-
-                     // Flip if it's a right-side wheel (x > 0)
-             if (vehicle.wheelInfos[index].chassisConnectionPointLocal.x > 0) {
-                 wheelModel.scale.x *= -1; // Mirror the wheel
+            if (player1.chassisBody) {
+                player1.chassisBody.position.set(data.x, data.y, data.z);
+                player1.chassisBody.quaternion.set(data.qx, data.qy, data.qz, data.qw);
+                player1.chassisBody.velocity.set(data.vx, data.vy, data.vz);
             }
-
-             // Wrapper for easier transform sync
-             const wheelWrapper = new THREE.Object3D();
-             wheelWrapper.add(wheelModel);
-             scene.add(wheelWrapper);
-
-             wheelMeshes[index] = wheelWrapper;
-            //  checkAllModelsLoaded(); // <- ADD THIS
         });
-        });
+
+/*                     socket.on('playerMoved', data => {
+            console.log(`🔄 Player ${data.id} moved to x=${data.x}, y=${data.y}, z=${data.z}`);
+            // Update other players in the game world here
+            }); */
+
+        
 
         const light = new THREE.DirectionalLight(0xffffff, 1);
         light.position.set(20, 50, 20);
@@ -207,25 +184,6 @@
         const helper = new THREE.CameraHelper(light.shadow.camera);
         scene.add(helper);
 
-        const otherPlayers = {};  
-
-        // This must be OUTSIDE animate() to avoid multiple listeners!
-        socket.on('playerMoved', data => {
-            if (data.id === socket.id) return;
-
-            let other = otherPlayers[data.id];
-
-            if (!other) {
-                const geom = new THREE.BoxGeometry(1, 1, 1);
-                const mat = new THREE.MeshStandardMaterial({ color: 0x0000ff });
-                const cube = new THREE.Mesh(geom, mat);
-                scene.add(cube);
-                otherPlayers[data.id] = cube;
-                other = cube;
-            }
-
-            other.position.set(data.x, data.y, data.z);
-        });
 
         let isUserInteracting = false;
         let isUserZooming = false;
@@ -263,39 +221,39 @@
         const engineForce = 400;
         const maxSteer = 0.5;
 
-        vehicle.setSteeringValue(0, 2);
-        vehicle.setSteeringValue(0, 3);
-        vehicle.setBrake(0, 1);
-        vehicle.setBrake(0, 0);
+        player.vehicle.setSteeringValue(0, 2);
+        player.vehicle.setSteeringValue(0, 3);
+        player.vehicle.setBrake(0, 1);
+        player.vehicle.setBrake(0, 0);
 
         if (keys['w']) {
-            vehicle.applyEngineForce(engineForce, 0);
-            vehicle.applyEngineForce(engineForce, 1);
+            player.vehicle.applyEngineForce(engineForce, 0);
+            player.vehicle.applyEngineForce(engineForce, 1);
         } else if (keys['s']) {
-            vehicle.applyEngineForce(-engineForce, 0);
-            vehicle.applyEngineForce(-engineForce, 1);
+            player.vehicle.applyEngineForce(-engineForce, 0);
+            player.vehicle.applyEngineForce(-engineForce, 1);
         } else {
-            vehicle.applyEngineForce(0, 0);
-            vehicle.applyEngineForce(0, 1);
+            player.vehicle.applyEngineForce(0, 0);
+            player.vehicle.applyEngineForce(0, 1);
         }
 
         if (keys['a']) {
-            vehicle.setSteeringValue(maxSteer, 2);
-            vehicle.setSteeringValue(maxSteer, 3);
+            player.vehicle.setSteeringValue(maxSteer, 2);
+            player.vehicle.setSteeringValue(maxSteer, 3);
         } else if (keys['d']) {
-            vehicle.setSteeringValue(-maxSteer, 2);
-            vehicle.setSteeringValue(-maxSteer, 3);
+            player.vehicle.setSteeringValue(-maxSteer, 2);
+            player.vehicle.setSteeringValue(-maxSteer, 3);
         }
 
         if (keys[' ']) {
-            vehicle.setBrake(10, 0);
-            vehicle.setBrake(10, 1);
+            player.vehicle.setBrake(10, 0);
+            player.vehicle.setBrake(10, 1);
         }
         }
         let lastTime;
         let smoothSpeed = 0;
-        let smoothedCameraPos = new THREE.Vector3();
-        let smoothedLookTarget = new THREE.Vector3();
+        // let smoothedCameraPos = new THREE.Vector3();
+        // let smoothedLookTarget = new THREE.Vector3();
         const cameraOffset = new THREE.Vector3(0, 2, 5);
         
         let fpsInterval = 1000 / 30; // 33.33ms
@@ -324,36 +282,55 @@
             frameCount++;
             updateControls();
 
-            if(model && chassisBody){
+            if(model && player.chassisBody){
                 // Offset vector (e.g., 0.5 units down on Y axis)
                 const visualOffset = new THREE.Vector3(0, -0.6, 0);
                 // Create a copy of chassisBody's quaternion and rotate the offset
-                const offset = visualOffset.clone().applyQuaternion(chassisBody.quaternion);
+                const offset = visualOffset.clone().applyQuaternion(player.chassisBody.quaternion);
                 // Apply offset to the position
-                model.position.copy(chassisBody.position).add(offset);
-                model.quaternion.copy(chassisBody.quaternion);
-                chassisWire.position.copy(chassisBody.position);
-                chassisWire.quaternion.copy(chassisBody.quaternion);
+                model.position.copy(player.chassisBody.position).add(offset);
+                model.quaternion.copy(player.chassisBody.quaternion);
+                player.chassisWire.position.copy(player.chassisBody.position);
+                player.chassisWire.quaternion.copy(player.chassisBody.quaternion);
             }
 
             // Sync wheels
-            for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-                vehicle.updateWheelTransform(i);
-                const t = vehicle.wheelInfos[i].worldTransform;
-                wheelMeshes[i].position.copy(t.position);
-                wheelMeshes[i].quaternion.copy(t.quaternion);
+            for (let i = 0; i < player.vehicle.wheelInfos.length; i++) {
+                player.vehicle.updateWheelTransform(i);
+                const t = player.vehicle.wheelInfos[i].worldTransform;
+                player.wheelMeshes[i].position.copy(t.position);
+                player.wheelMeshes[i].quaternion.copy(t.quaternion);
             }
 
-            if (keys['8']) chassisBody.position.y += 0.1;
-            if (keys['2']) chassisBody.position.y -= 0.1;
+          if (player1.model && player1.chassisBody) {
+                const visualOffset1 = new THREE.Vector3(0, -0.6, 0);
+                const offset1 = visualOffset1.clone().applyQuaternion(player1.chassisBody.quaternion);
+                player1.model.position.copy(player1.chassisBody.position).add(offset1);
+                player1.model.quaternion.copy(player1.chassisBody.quaternion);
+
+                if (player1.chassisWire) {
+                    player1.chassisWire.position.copy(player1.chassisBody.position);
+                    player1.chassisWire.quaternion.copy(player1.chassisBody.quaternion);
+                }
+
+                if (player1.vehicle && player1.wheelMeshes) {
+                    for (let i = 0; i < player1.vehicle.wheelInfos.length; i++) {
+                        player1.vehicle.updateWheelTransform(i);
+                        const t = player1.vehicle.wheelInfos[i].worldTransform;
+                        player1.wheelMeshes[i].position.copy(t.position);
+                        player1.wheelMeshes[i].quaternion.copy(t.quaternion);
+                    }
+                }
+            }
+
 
             const lerpFactor = 0.1;
             const maxSpeed = 0.5;
             // const cameraOffset = new THREE.Vector3(0, 2, 5);
-            const bodyPos = new THREE.Vector3().copy(chassisBody.position);
-            const desiredCameraPos = bodyPos.clone().add(cameraOffset.clone().applyQuaternion(chassisBody.quaternion));
+            const bodyPos = new THREE.Vector3().copy(player.chassisBody.position);
+            const desiredCameraPos = bodyPos.clone().add(cameraOffset.clone().applyQuaternion(player.chassisBody.quaternion));
 
-            const currentSpeed = chassisBody.velocity.length();
+            const currentSpeed = player.chassisBody.velocity.length();
             const smoothing = 0.02;
             smoothSpeed += (currentSpeed - smoothSpeed) * smoothing;
 
@@ -369,15 +346,20 @@
             }
 
 
-            if (frameCount % 30 === 0 && chassisBody) {
-                const { x, y, z } = chassisBody.position;
-                console.log(`📍 My position: x=${x.toFixed(2)}, y=${y.toFixed(2)}, z=${z.toFixed(2)}`);
-                socket.emit('move', { x, y, z });
-            }
-            socket.on('playerMoved', data => {
-            console.log(`🔄 Player ${data.id} moved to x=${data.x}, y=${data.y}, z=${data.z}`);
-            // Update other players in the game world here
-            });
+            socket.emit('move', {
+                id: socket.id,
+                x: player.chassisBody.position.x,
+                y: player.chassisBody.position.y,
+                z: player.chassisBody.position.z,
+                qx: player.chassisBody.quaternion.x,
+                qy: player.chassisBody.quaternion.y,
+                qz: player.chassisBody.quaternion.z,
+                qw: player.chassisBody.quaternion.w,
+                vx: player.chassisBody.velocity.x,
+                vy: player.chassisBody.velocity.y,
+                vz: player.chassisBody.velocity.z,
+                });
+
 
             stats.end(); 
             renderer.render(scene, camera);
