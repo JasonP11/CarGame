@@ -103,45 +103,6 @@ scene.background = envMap;
     const gltfLoader = new GLTFLoader(loadingManager);
 
 
-/*  gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road.glb', (gltf) => {
-    const model = gltf.scene;
-    model.traverse(child => {
-        if (child.isMesh) {
-            // Bake the global transform (including scale) into the geometry
-            child.updateWorldMatrix(true, true);
-
-            const bakedGeometry = child.geometry.clone();
-            bakedGeometry.applyMatrix4(child.matrixWorld); // Bake position, rotation, scale
-
-            const shape = createTrimesh({ geometry: bakedGeometry }); // Pass as fake mesh
-
-            if (!shape) {
-                console.warn("Trimesh not created for", child.name);
-                return;
-            }
-
-            const body = new CANNON.Body({ mass: 0, shape });
-
-            // child.matrixWorld baked into geometry, so use identity transforms
-            body.position.set(0, 0.8, 0);
-            body.quaternion.set(0, 0, 0, 1);
-
-            world.addBody(body);
-
-            // Optional: For clarity, don't apply transforms to mesh anymore
-            child.visible = true;
-        }
-    });
-
-        scene.add(model);
-    },
-    undefined,
-    function (error) {
-        console.error('Error loading GLB model:', error);
-    }); */
-
-// const loader = new GLTFLoader();
-
 function threeToCannonTrimesh(mesh) {
     const geometry = mesh.geometry.clone();
     
@@ -228,7 +189,73 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
             }
             }
 
+        // Array to hold checkpoints
+        const checkpoints = [];
+        const checkpointPositions = [
+            { x: 0, y: 0, z: -50 },   // Checkpoint 1
+            { x: 20, y: 0, z: -100 }, // Checkpoint 2
+            { x: -20, y: 0, z: -150 },// Checkpoint 3
+            { x: 0, y: 0, z: -200 }   // Checkpoint 4
+        ];
 
+        for (let i = 0; i < checkpointPositions.length; i++) {
+            const shape = new CANNON.Box(new CANNON.Vec3(10, 0.5, 1));
+            const body = new CANNON.Body({ mass: 0, collisionResponse: false });
+            body.addShape(shape);
+            body.position.set(
+                checkpointPositions[i].x,
+                checkpointPositions[i].y,
+                checkpointPositions[i].z
+            );
+            body.isTrigger = true;
+            body.isCheckpoint = true;
+            body.checkpointIndex = i; // store order number
+            world.addBody(body);
+            checkpoints.push(body);
+
+            // Visual
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(20, 1, 2),
+                new THREE.MeshBasicMaterial({
+                    color: 0xff0000,
+                    transparent: true,
+                    opacity: 0.5
+                })
+            );
+            mesh.position.copy(body.position);
+            scene.add(mesh);
+        }
+
+        // Track player progress
+        let currentCheckpointIndex = 0;
+        let winnerDetected = false;
+        let lastCheckpointIndex = null;
+
+        // Collision event
+        player.chassisBody.addEventListener('collide', (event) => {
+            const otherBody = event.body;
+
+    if (!otherBody.isCheckpoint) return;
+
+    // Normal next checkpoint
+    if (otherBody.checkpointIndex === currentCheckpointIndex + 1) {
+        currentCheckpointIndex++;
+    }
+    // Special case: coming from last checkpoint to start (finish)
+    else if (
+        otherBody.checkpointIndex === 0 &&
+        currentCheckpointIndex === checkpoints.length - 1
+    ) {
+        currentCheckpointIndex = 0;
+
+        if (!winnerDetected) {
+            winnerDetected = true;
+            console.log("Winner!");
+            alert("Winner!");
+            socket.emit('playerWon', { id: socket.id });
+        }
+    }
+});
         // Optional: sync initial position
         if (player1.model && player1.chassisBody) {
             player1.model.position.copy(player1.chassisBody.position);
@@ -239,12 +266,9 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
         console.error('An error happened while loading the model:', error);
     });
 
-
     socket.on('playerMoved', data => {
         if (data.id === socket.id) return; // Ignore own movement
-
         // No need to clone again – we already assigned player1.model in gltfLoader callback
-
         if (player1.chassisBody) {
             player1.chassisBody.position.set(data.x, data.y, data.z);
             player1.chassisBody.quaternion.set(data.qx, data.qy, data.qz, data.qw);
@@ -252,6 +276,12 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
         }
     });
 
+    socket.on('playerWon', (data) => {
+    if (data.id !== socket.id) {
+        alert(`Player ${data.id} has won!`);
+    }
+    // You can also add logic here to stop the game or show an end screen.
+});
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(20, 50, 20);
