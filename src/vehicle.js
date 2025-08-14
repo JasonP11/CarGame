@@ -9,11 +9,6 @@ export function createVehicleAt(scene, world, x, y, z, gltfLoader, wheelGLBUrl =
     chassisBody.angularDamping = 0.5;
     world.addBody(chassisBody);
 
-    // const chassisWireGeo = new THREE.BoxGeometry(2, 1, 4);
-    // const chassisWireMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
-    // const chassisWire = new THREE.Mesh(chassisWireGeo, chassisWireMat);
-    // scene.add(chassisWire);
-
     const vehicle = new CANNON.RaycastVehicle({
         chassisBody,
         indexRightAxis: 0,

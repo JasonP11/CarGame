@@ -192,14 +192,14 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
         // Array to hold checkpoints
         const checkpoints = [];
         const checkpointPositions = [
-            { x: 0, y: 0, z: -50 },   // Checkpoint 1
-            { x: 20, y: 0, z: -100 }, // Checkpoint 2
-            { x: -20, y: 0, z: -150 },// Checkpoint 3
-            { x: 0, y: 0, z: -200 }   // Checkpoint 4
+            { x: -90, y: 5, z: 0 },   // Checkpoint 1
+            { x: 0, y: 5, z: -210 }, // Checkpoint 2
+            { x: 90, y: 5, z: 0 },// Checkpoint 3
+            { x: 0, y: 5, z: 210 }   // Checkpoint 4
         ];
 
         for (let i = 0; i < checkpointPositions.length; i++) {
-            const shape = new CANNON.Box(new CANNON.Vec3(10, 0.5, 1));
+            const shape = new CANNON.Box(new CANNON.Vec3(30, 6, 1));
             const body = new CANNON.Body({ mass: 0, collisionResponse: false });
             body.addShape(shape);
             body.position.set(
@@ -207,15 +207,21 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
                 checkpointPositions[i].y,
                 checkpointPositions[i].z
             );
+
+            if (i === 1 || i === 3) {
+                body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI / 2)
+            }
             body.isTrigger = true;
             body.isCheckpoint = true;
             body.checkpointIndex = i; // store order number
             world.addBody(body);
             checkpoints.push(body);
 
+            // body.position.set(x, y  , z);
+
             // Visual
             const mesh = new THREE.Mesh(
-                new THREE.BoxGeometry(20, 1, 2),
+                new THREE.BoxGeometry(60, 12, 2),
                 new THREE.MeshBasicMaterial({
                     color: 0xff0000,
                     transparent: true,
@@ -223,39 +229,55 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
                 })
             );
             mesh.position.copy(body.position);
+            mesh.quaternion.copy(body.quaternion);
             scene.add(mesh);
         }
+// Lap settings
+let currentCheckpointIndex = 0;
+let lapsCompleted = 0;
+const totalLaps = 3; // Change this for number of laps
+let raceStarted = false;
+let winnerDetected = false;
 
-        // Track player progress
-        let currentCheckpointIndex = 0;
-        let winnerDetected = false;
-        let lastCheckpointIndex = null;
-
-        // Collision event
-        player.chassisBody.addEventListener('collide', (event) => {
-            const otherBody = event.body;
+player.chassisBody.addEventListener('collide', (event) => {
+    const otherBody = event.body;
 
     if (!otherBody.isCheckpoint) return;
 
-    // Normal next checkpoint
-    if (otherBody.checkpointIndex === currentCheckpointIndex + 1) {
+    // --- RACE START ---
+    if (!raceStarted && otherBody.checkpointIndex === 0) {
+        raceStarted = true;
+        currentCheckpointIndex = 0; // waiting for checkpoint 1 next
+        console.log("Race started!");
+        return;
+    }
+
+    // --- NORMAL PROGRESSION ---
+    if (raceStarted && otherBody.checkpointIndex === currentCheckpointIndex + 1) {
         currentCheckpointIndex++;
     }
-    // Special case: coming from last checkpoint to start (finish)
+    // --- FINISH LINE (from last checkpoint back to start) ---
     else if (
+        raceStarted &&
         otherBody.checkpointIndex === 0 &&
         currentCheckpointIndex === checkpoints.length - 1
     ) {
-        currentCheckpointIndex = 0;
+        lapsCompleted++;
+        console.log(`Lap ${lapsCompleted} completed!`);
 
-        if (!winnerDetected) {
+        // Winner check
+        if (lapsCompleted >= totalLaps && !winnerDetected) {
             winnerDetected = true;
-            console.log("Winner!");
             alert("Winner!");
             socket.emit('playerWon', { id: socket.id });
+            return;
         }
+
+        // Prepare for next lap
+        currentCheckpointIndex = 0; 
     }
 });
+
         // Optional: sync initial position
         if (player1.model && player1.chassisBody) {
             player1.model.position.copy(player1.chassisBody.position);
