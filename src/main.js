@@ -124,11 +124,11 @@ function threeToCannonTrimesh(mesh) {
 let path, physicsBody;
 
 gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcomplex.glb', (gltf) => {
-    path = gltf.scene;
-    path.position.set(0, 2.45, 0);
-    scene.add(path);
+    const collisionMesh = gltf.scene;
+    collisionMesh.position.set(0, 2.45, 0);
+    // scene.add(path);
 
-    path.traverse((child) => {
+    collisionMesh.traverse((child) => {
            if (child.isMesh) {
             child.updateWorldMatrix(true, true); // ensure correct transforms
             const shape = threeToCannonTrimesh(child);
@@ -143,13 +143,25 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
             world.addBody(physicsBody);
         }
     });
+
+    path = collisionMesh.clone(true);
+    path.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
+
+    scene.add(path);
+
+
 });
             
     let model;       // For local player visual
     let baseModel;   // Internal clone source
     let player, player1; // Declare globally so you can use in animate()
 
-    gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/chassis.glb', (gltf) => {
+    gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/chassis-simple.glb', (gltf) => {
         baseModel = gltf.scene;
 
         baseModel.traverse((child) => {
@@ -217,8 +229,6 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
             world.addBody(body);
             checkpoints.push(body);
 
-            // body.position.set(x, y  , z);
-
             // Visual
             const mesh = new THREE.Mesh(
                 new THREE.BoxGeometry(60, 12, 2),
@@ -232,51 +242,51 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcom
             mesh.quaternion.copy(body.quaternion);
             scene.add(mesh);
         }
-// Lap settings
-let currentCheckpointIndex = 0;
-let lapsCompleted = 0;
-const totalLaps = 3; // Change this for number of laps
-let raceStarted = false;
-let winnerDetected = false;
+        // Lap settings
+        let currentCheckpointIndex = 0;
+        let lapsCompleted = 0;
+        const totalLaps = 3; // Change this for number of laps
+        let raceStarted = false;
+        let winnerDetected = false;
 
-player.chassisBody.addEventListener('collide', (event) => {
-    const otherBody = event.body;
+        player.chassisBody.addEventListener('collide', (event) => {
+            const otherBody = event.body;
 
-    if (!otherBody.isCheckpoint) return;
+            if (!otherBody.isCheckpoint) return;
 
-    // --- RACE START ---
-    if (!raceStarted && otherBody.checkpointIndex === 0) {
-        raceStarted = true;
-        currentCheckpointIndex = 0; // waiting for checkpoint 1 next
-        console.log("Race started!");
-        return;
-    }
+            // --- RACE START ---
+            if (!raceStarted && otherBody.checkpointIndex === 0) {
+                raceStarted = true;
+                currentCheckpointIndex = 0; // waiting for checkpoint 1 next
+                console.log("Race started!");
+                return;
+            }
 
-    // --- NORMAL PROGRESSION ---
-    if (raceStarted && otherBody.checkpointIndex === currentCheckpointIndex + 1) {
-        currentCheckpointIndex++;
-    }
-    // --- FINISH LINE (from last checkpoint back to start) ---
-    else if (
-        raceStarted &&
-        otherBody.checkpointIndex === 0 &&
-        currentCheckpointIndex === checkpoints.length - 1
-    ) {
-        lapsCompleted++;
-        console.log(`Lap ${lapsCompleted} completed!`);
+            // --- NORMAL PROGRESSION ---
+            if (raceStarted && otherBody.checkpointIndex === currentCheckpointIndex + 1) {
+                currentCheckpointIndex++;
+            }
+            // --- FINISH LINE (from last checkpoint back to start) ---
+            else if (
+                raceStarted &&
+                otherBody.checkpointIndex === 0 &&
+                currentCheckpointIndex === checkpoints.length - 1
+            ) {
+                lapsCompleted++;
+                console.log(`Lap ${lapsCompleted} completed!`);
 
-        // Winner check
-        if (lapsCompleted >= totalLaps && !winnerDetected) {
-            winnerDetected = true;
-            alert("Winner!");
-            socket.emit('playerWon', { id: socket.id });
-            return;
-        }
+                // Winner check
+                if (lapsCompleted >= totalLaps && !winnerDetected) {
+                    winnerDetected = true;
+                    alert("Winner!");
+                    socket.emit('playerWon', { id: socket.id });
+                    return;
+                }
 
-        // Prepare for next lap
-        currentCheckpointIndex = 0; 
-    }
-});
+                // Prepare for next lap
+                currentCheckpointIndex = 0; 
+            }
+        });
 
         // Optional: sync initial position
         if (player1.model && player1.chassisBody) {
@@ -298,29 +308,38 @@ player.chassisBody.addEventListener('collide', (event) => {
         }
     });
 
-    socket.on('playerWon', (data) => {
-    if (data.id !== socket.id) {
-        alert(`Player ${data.id} has won!`);
+socket.on('playerWon', (data) => {
+    if (data.id === socket.id) {
+        alert("🎉 You have won!");
+    } else {
+        alert(`💀 Player ${data.id} has won!`);
     }
-    // You can also add logic here to stop the game or show an end screen.
+    // Optional: stop game logic here
 });
 
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(20, 50, 20);
+    // Main sun light
+    const light = new THREE.DirectionalLight(0xffffff, 1.8); // brighter intensity
+    light.position.set(20, 100, 20);
     light.castShadow = true;
     light.shadow.mapSize.set(4096, 4096);
 
     const shadowCam = light.shadow.camera;
-    shadowCam.left = -75;
-    shadowCam.right = 75;
-    shadowCam.top = 75;
-    shadowCam.bottom = -75;
+    shadowCam.left = -205;
+    shadowCam.right = 205;
+    shadowCam.top = 195;
+    shadowCam.bottom = -195;
     shadowCam.near = 1;
-    shadowCam.far = 150;
+    shadowCam.far = 250;
     light.shadow.bias = -0.0005;
-    light.shadow.normalBias = 0.02; // Helps with shadow clipping at edges
+    light.shadow.normalBias = 0.02;
 
     scene.add(light);
+
+    // Ambient light to fill shadows
+    // const ambient = new THREE.AmbientLight(0xffffff, 0.6); 
+    // scene.add(ambient);
+
+    // Debug helper
     const helper = new THREE.CameraHelper(light.shadow.camera);
     scene.add(helper);
 

@@ -47,6 +47,10 @@ io.on('connection', socket => {
   });
   });
 
+  socket.on('playerWon', () => {
+  console.log(`Player ${socket.id} has Won`);
+  });
+
 
   // On disconnect, remove player
   socket.on('disconnect', () => {
