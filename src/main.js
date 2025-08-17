@@ -70,22 +70,49 @@ scene.background = envMap;
     // Replace the old textureLoader with one that uses loadingManager:
     const textureLoader = new THREE.TextureLoader(loadingManager);
 
-    const groundColorMap = textureLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/red_brick_diff_4k.jpg');
-    const groundNormalMap = textureLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/red_brick_nor_gl_4k.png');
-
+    const groundColorMap = textureLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/Grass005_4K-PNG_Color.png');
+    const groundNormalMap = textureLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/Grass005_4K-PNG_NormalGL.png');
+    
+    const roughnessMap = textureLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/Grass005_4K-PNG_Roughness.png');
+    const aoMap = textureLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/Grass005_4K-PNG_AmbientOcclusion.png');
+    const displacementMap = textureLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/Grass005_4K-PNG_Displacement.png');
 
     groundColorMap.wrapS = groundColorMap.wrapT = THREE.RepeatWrapping;
-    groundColorMap.repeat.set(3, 3);
+    groundColorMap.repeat.set(50, 50);
     groundNormalMap.wrapS = groundNormalMap.wrapT = THREE.RepeatWrapping;
-    groundNormalMap.repeat.set(3, 3);
+    groundNormalMap.repeat.set(50, 50);
+    
+    roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+    roughnessMap.repeat.set(50, 50);
+    aoMap.wrapS = aoMap.wrapT = THREE.RepeatWrapping;
+    aoMap.repeat.set(50, 50);
+    displacementMap.wrapS = displacementMap.wrapT = THREE.RepeatWrapping;
+    displacementMap.repeat.set(50, 50);
 
+
+    
     groundColorMap.colorSpace = THREE.SRGBColorSpace;
 
-    const planeGeometry = new THREE.PlaneGeometry(300, 300);
-    const planeMaterial = new THREE.MeshPhysicalMaterial({
+
+    const planeGeometry = new THREE.PlaneGeometry(300, 600, 200, 200);
+
+    planeGeometry.setAttribute(
+    'uv2',
+    new THREE.BufferAttribute(planeGeometry.attributes.uv.array, 2)
+    );
+
+    const planeMaterial = new THREE.MeshStandardMaterial({
         map: groundColorMap,
         normalMap: groundNormalMap,
+        roughnessMap: roughnessMap,
+        aoMap: aoMap,
+        displacementMap: displacementMap,
+        displacementScale: 0.1
     });
+    planeMaterial.normalScale.set(5, 5);
+    planeMaterial.displacementScale = 0.4;
+    planeMaterial.roughness = 0.8; 
+    planeMaterial.aoMapIntensity = 3.0;
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
     plane.rotation.x = -Math.PI / 2;
@@ -123,9 +150,9 @@ function threeToCannonTrimesh(mesh) {
 
 let path, physicsBody;
 
-gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/roadcomplex.glb', (gltf) => {
+gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_propertion.glb', (gltf) => {
     const collisionMesh = gltf.scene;
-    collisionMesh.position.set(0, 2.45, 0);
+    collisionMesh.position.set(0, 2.5, 0);
     // scene.add(path);
 
     collisionMesh.traverse((child) => {
@@ -317,27 +344,30 @@ socket.on('playerWon', (data) => {
     // Optional: stop game logic here
 });
 
-    // Main sun light
-    const light = new THREE.DirectionalLight(0xffffff, 1.8); // brighter intensity
-    light.position.set(20, 100, 20);
+    // Setup directional light
+    const light = new THREE.DirectionalLight(0xffffff, 1.8);
     light.castShadow = true;
-    light.shadow.mapSize.set(4096, 4096);
-
-    const shadowCam = light.shadow.camera;
-    shadowCam.left = -205;
-    shadowCam.right = 205;
-    shadowCam.top = 195;
-    shadowCam.bottom = -195;
-    shadowCam.near = 1;
-    shadowCam.far = 250;
-    light.shadow.bias = -0.0005;
-    light.shadow.normalBias = 0.02;
-
+    light.shadow.mapSize.set(2048, 2048); // Not huge, but enough
+    light.shadow.camera.near = 1;
+    light.shadow.camera.far = 50; // Keep it tight
+    light.shadow.camera.left = -20;
+    light.shadow.camera.right = 20;
+    light.shadow.camera.top = 20;
+    light.shadow.camera.bottom = -20;
+    light.shadow.bias = -0.0005; // helps prevent acne
+    light.shadow.normalBias = 0.02; // pushes shadow away from surface slightly
     scene.add(light);
 
-    // Ambient light to fill shadows
-    // const ambient = new THREE.AmbientLight(0xffffff, 0.6); 
-    // scene.add(ambient);
+function updateLight() {
+    if (!player || !player.chassisBody) return; // skip if player isn't ready yet
+
+    const playerPos = player.chassisBody.position.clone();
+    light.position.copy(playerPos).add(new THREE.Vector3(10, 20, 10));
+    light.target.position.copy(playerPos);
+    light.target.updateMatrixWorld();
+}
+
+
 
     // Debug helper
     const helper = new THREE.CameraHelper(light.shadow.camera);
@@ -491,7 +521,7 @@ socket.on('playerWon', (data) => {
             vz: player.chassisBody.velocity.z,
             });
 
-
+        updateLight()
         stats.end(); 
         renderer.render(scene, camera);
     
