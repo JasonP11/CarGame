@@ -7,6 +7,7 @@ import Stats from 'stats.js';
 import { io } from 'socket.io-client';
 import { createVehicleAt } from './vehicle.js';
 import { syncVehicleModel } from './vehiclesync.js';
+// import { updateWheelFriction } from './test.js';
 
 
 console.log('CANNON loaded:', CANNON); // should show full object
@@ -147,10 +148,17 @@ function threeToCannonTrimesh(mesh) {
     );
 }
 
+// --- Materials ---
+const asphaltMat = new CANNON.Material("asphalt");
+const iceMat = new CANNON.Material("ice");
+
+// Not really used in RaycastVehicle, but helps if you want collisions later
+world.addContactMaterial(new CANNON.ContactMaterial(asphaltMat, asphaltMat, { friction: 1.0 }));
+world.addContactMaterial(new CANNON.ContactMaterial(iceMat, iceMat, { friction: 0.01 }));
 
 let path, physicsBody;
 
-gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_propertion.glb', (gltf) => {
+gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_propertionbarrier.glb', (gltf) => {
     const collisionMesh = gltf.scene;
     collisionMesh.position.set(0, 2.5, 0);
     // scene.add(path);
@@ -164,6 +172,7 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
                 mass: 0,
                 shape: shape,
                 type: CANNON.Body.STATIC,
+                material: iceMat,
                 position: new CANNON.Vec3(0, 0, 0)
             });
 
@@ -464,6 +473,9 @@ function updateLight() {
         // if (elapsed >= fpsInterval) {
             // then = now - (elapsed % fpsInterval); // prevent drift
 
+
+        // updateWheelFriction(player.vehicle);
+             
         const velocity = player.chassisBody.velocity.length(); // in meters/second
         const speedKmh = velocity * 3.6; // convert to km/h
         document.getElementById("speedDisplay").textContent = speedKmh.toFixed(1) + " km/h";

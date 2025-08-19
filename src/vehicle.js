@@ -1,14 +1,37 @@
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';        // (only if you use THREE in this file)
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export function createVehicleAt(scene, world, x, y, z, gltfLoader, wheelGLBUrl = 'https://raw.githubusercontent.com/JackAlt3/CarGame/main/wheels.glb') {
-    const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.3, 2));
+export function createVehicleAt(
+    scene,
+    world,
+    x,
+    y,
+    z,
+    gltfLoader,
+    wheelGLBUrl = 'https://raw.githubusercontent.com/JackAlt3/CarGame/main/wheels.glb',
+    carGLBUrl = 'https://raw.githubusercontent.com/JackAlt3/CarGame/main/chassistrimesh.glb' // 🚗 your uploaded chassis mesh
+) {
+
+    // 🚗 Load car chassis mesh first
     const chassisBody = new CANNON.Body({ mass: 150 });
-    chassisBody.addShape(chassisShape);
-    chassisBody.position.set(x, y, z);
-    chassisBody.angularDamping = 0.5;
-    world.addBody(chassisBody);
+    gltfLoader.load(carGLBUrl, gltf => {
+        const carMesh = gltf.scene.children[0]; // assuming first child is the car body mesh
+        carMesh.scale.set(1, 1, 1);
+        carMesh.position.set(x, y, z);
 
+        scene.add(carMesh);
+
+        // Convert to Cannon Trimesh
+        const shape = threeToCannonTrimesh(carMesh);
+        chassisBody.addShape(shape);
+        chassisBody.position.set(x, y, z);
+        chassisBody.angularDamping = 0.5;
+
+        world.addBody(chassisBody);
+    });
+
+    // Setup vehicle
     const vehicle = new CANNON.RaycastVehicle({
         chassisBody,
         indexRightAxis: 0,
@@ -70,6 +93,28 @@ export function createVehicleAt(scene, world, x, y, z, gltfLoader, wheelGLBUrl =
         vehicle,
         chassisBody,
         wheelMeshes,
-        // chassisWire
     };
+}
+
+
+
+function threeToCannonTrimesh(mesh) {
+    let geometry = mesh.geometry;
+
+    if (!geometry.index) {
+        // ensure the geometry is indexed
+        geometry = mergeVertices(geometry);
+    }
+
+    // Apply world matrix
+    const geo = geometry.clone();
+    geo.applyMatrix4(mesh.matrixWorld);
+
+    const vertices = geo.attributes.position.array;
+    const indices = geo.index.array;
+
+    return new CANNON.Trimesh(
+        Float32Array.from(vertices),
+        Uint16Array.from(indices)
+    );
 }
