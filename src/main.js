@@ -7,6 +7,7 @@ import Stats from 'stats.js';
 import { io } from 'socket.io-client';
 import { createVehicleAt } from './vehicle.js';
 import { syncVehicleModel } from './vehiclesync.js';
+import { worldborder } from './box.js';
 
 
 console.log('CANNON loaded:', CANNON); // should show full object
@@ -183,6 +184,8 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
 
 
 });
+
+    worldborder(world);
             
     let model;       // For local player visual
     let baseModel;   // Internal clone source
