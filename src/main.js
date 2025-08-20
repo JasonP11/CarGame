@@ -7,7 +7,8 @@ import Stats from 'stats.js';
 import { io } from 'socket.io-client';
 import { createVehicleAt } from './vehicle.js';
 import { syncVehicleModel } from './vehiclesync.js';
-// import { updateWheelFriction } from './test.js';
+import { worldborder } from './box.js'
+// import { loadTrackBorder } from './test.js';
 
 
 console.log('CANNON loaded:', CANNON); // should show full object
@@ -147,15 +148,7 @@ function threeToCannonTrimesh(mesh) {
         Uint16Array.from(indices)
     );
 }
-
-// --- Materials ---
-const asphaltMat = new CANNON.Material("asphalt");
-const iceMat = new CANNON.Material("ice");
-
-// Not really used in RaycastVehicle, but helps if you want collisions later
-world.addContactMaterial(new CANNON.ContactMaterial(asphaltMat, asphaltMat, { friction: 1.0 }));
-world.addContactMaterial(new CANNON.ContactMaterial(iceMat, iceMat, { friction: 0.01 }));
-
+/* 
 let path, physicsBody;
 
 gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_propertionbarrier.glb', (gltf) => {
@@ -172,7 +165,7 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
                 mass: 0,
                 shape: shape,
                 type: CANNON.Body.STATIC,
-                material: iceMat,
+                // material: iceMat,
                 position: new CANNON.Vec3(0, 0, 0)
             });
 
@@ -192,7 +185,84 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
 
 
 });
-            
+ */
+/* gltfLoader.load(
+  "https://raw.githubusercontent.com/JackAlt3/CarGame/main/border.glb",
+  (gltf) => {
+    const sceneGLTF = gltf.scene;
+    scene.add(sceneGLTF);
+
+    // Traverse the loaded scene to find meshes
+    sceneGLTF.traverse((child) => {
+      if (child.isMesh) {
+        console.log("Found mesh:", child.name);
+        processOutline(child); // pass the mesh, not the whole scene
+      }
+    });
+  },
+  undefined,
+  (error) => {
+    console.error("Error loading GLB:", error);
+  }
+);
+
+function processOutline(mesh) {
+  if (!mesh.geometry) {
+    console.warn("Mesh has no geometry:", mesh);
+    return;
+  }
+
+  const geo = mesh.geometry;
+  const pos = geo.attributes.position.array;
+
+  const points = [];
+  for (let i = 0; i < pos.length; i += 3) {
+    points.push(new THREE.Vector3(pos[i], pos[i + 1], pos[i + 2]));
+  }
+
+  console.log("Outline points:", points);
+
+  // Visualize points as red spheres
+  const sphereGeo = new THREE.SphereGeometry(0.2, 8, 8);
+  const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  points.forEach((pt) => {
+    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+    sphere.position.copy(pt);
+    scene.add(sphere);
+  });
+}
+ */
+gltfLoader.load(
+  'https://raw.githubusercontent.com/JackAlt3/CarGame/main/border2.glb',
+  (gltf) => {
+    console.log("✅ GLTF loaded:", gltf);
+
+    const borderObj = gltf.scene;
+
+    scene.add(borderObj); // Add visual model
+  },
+  undefined,
+  (err) => {
+    console.error("GLTF load error:", err);
+  }
+);
+
+/*     const carMaterial = new CANNON.Material("carMaterial");
+    const wallMaterial = new CANNON.Material("wallMaterial");
+
+    const carWallContact = new CANNON.ContactMaterial(carMaterial, wallMaterial, {
+    friction: 0.0,
+    restitution: 0.0,
+    });
+    world.addContactMaterial(carWallContact);
+
+    // Attach to world so vehicle.js can access
+    world.carMaterial = carMaterial;
+    world.wallMaterial = wallMaterial;
+
+    worldborder(world); */
+worldborder(world);
+/*             
     let model;       // For local player visual
     let baseModel;   // Internal clone source
     let player, player1; // Declare globally so you can use in animate()
@@ -235,10 +305,12 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
                 player = createVehicleAt(scene, world, 0, 3, 10, gltfLoader);
                 player.model = model;
             }
-            }
-
+            } */
+        let player,model;
+        player = createVehicleAt(scene, world, 0, 3, 10, gltfLoader);
+        player.model = model
         // Array to hold checkpoints
-        const checkpoints = [];
+/*         const checkpoints = [];
         const checkpointPositions = [
             { x: -90, y: 5, z: 0 },   // Checkpoint 1
             { x: 0, y: 5, z: -210 }, // Checkpoint 2
@@ -263,9 +335,9 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
             body.isCheckpoint = true;
             body.checkpointIndex = i; // store order number
             world.addBody(body);
-            checkpoints.push(body);
+            checkpoints.push(body); */
 
-            // Visual
+/*             // Visual
             const mesh = new THREE.Mesh(
                 new THREE.BoxGeometry(60, 12, 2),
                 new THREE.MeshBasicMaterial({
@@ -276,10 +348,10 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
             );
             mesh.position.copy(body.position);
             mesh.quaternion.copy(body.quaternion);
-            scene.add(mesh);
-        }
+            scene.add(mesh); 
+        }*/
         // Lap settings
-        let currentCheckpointIndex = 0;
+        /* let currentCheckpointIndex = 0;
         let lapsCompleted = 0;
         const totalLaps = 3; // Change this for number of laps
         let raceStarted = false;
@@ -322,9 +394,9 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
                 // Prepare for next lap
                 currentCheckpointIndex = 0; 
             }
-        });
+        }); */
 
-        // Optional: sync initial position
+/*         // Optional: sync initial position
         if (player1.model && player1.chassisBody) {
             player1.model.position.copy(player1.chassisBody.position);
             player1.model.quaternion.copy(player1.chassisBody.quaternion);
@@ -333,8 +405,8 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
     }, undefined, (error) => {
         console.error('An error happened while loading the model:', error);
     });
-
-    socket.on('playerMoved', data => {
+ */
+/*     socket.on('playerMoved', data => {
         if (data.id === socket.id) return; // Ignore own movement
         // No need to clone again – we already assigned player1.model in gltfLoader callback
         if (player1.chassisBody) {
@@ -342,9 +414,9 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
             player1.chassisBody.quaternion.set(data.qx, data.qy, data.qz, data.qw);
             player1.chassisBody.velocity.set(data.vx, data.vy, data.vz);
         }
-    });
+    }); */
 
-socket.on('playerWon', (data) => {
+/* socket.on('playerWon', (data) => {
     if (data.id === socket.id) {
         alert("🎉 You have won!");
     } else {
@@ -352,7 +424,7 @@ socket.on('playerWon', (data) => {
     }
     // Optional: stop game logic here
 });
-
+ */
     // Setup directional light
     const light = new THREE.DirectionalLight(0xffffff, 1.8);
     light.castShadow = true;
@@ -415,8 +487,8 @@ function updateLight() {
     document.body.appendChild(stats.dom);
 
     // Control loop
-    function updateControls() {
-    if (!player || !player.vehicle) return;
+    // function updateControls() {
+/*     if (!player || !player.vehicle) return;
     const engineForce = 400;
     const maxSteer = 0.5;
 
@@ -447,11 +519,59 @@ function updateLight() {
     if (keys[' ']) {
         player.vehicle.setBrake(10, 0);
         player.vehicle.setBrake(10, 1);
+    } */
+    // }
+
+    function updateControls() {
+  const speed = 0.05;
+  const rotSpeed = 0.01;
+    const speed1 = 0.2;
+  const rotSpeed1 = 0.03;
+
+  if (keys['w']) player.chassisBody.position.z -= speed;
+  if (keys['s']) player.chassisBody.position.z += speed;
+  if (keys['d']) player.chassisBody.position.x += speed;
+  if (keys['a']) player.chassisBody.position.x -= speed;
+  if (keys['q']) player.chassisBody.rotation.y += rotSpeed;
+  if (keys['e']) player.chassisBody.rotation.y -= rotSpeed;
+
+    if (keys['y']) player.chassisBody.position.z -= speed1;
+  if (keys['h']) player.chassisBody.position.z += speed1;
+  if (keys['j']) player.chassisBody.position.x += speed1;
+  if (keys['g']) player.chassisBody.position.x -= speed1;
+  if (keys['t']) player.chassisBody.rotation.y += rotSpeed1;
+  if (keys['u']) player.chassisBody.rotation.y -= rotSpeed1;
+}
+
+
+
+    // Store last position to compute speed manually
+let lastPos = new THREE.Vector3();
+let smoothSpeed = 0;
+
+// === CAMERA FOLLOW (with OrbitControls override) ===
+function updateCamera(camera, controls, player, cameraOffset) {
+    const lerpFactor = 0.1;
+
+    const bodyPos = player.chassisBody.position.clone();
+    const desiredCameraPos = bodyPos.clone().add(
+        cameraOffset.clone().applyQuaternion(player.chassisBody.quaternion)
+    );
+
+    if (!isUserInteracting && !isUserZooming) {
+        // Auto-follow mode
+        camera.position.lerp(desiredCameraPos, lerpFactor);
+        controls.target.lerp(bodyPos, lerpFactor);
+        camera.lookAt(bodyPos);
+    } else {
+        // User is controlling
+        controls.update();
     }
-    }
+}
+
     
     let lastTime;
-    let smoothSpeed = 0;
+    // let smoothSpeed = 0;
     const cameraOffset = new THREE.Vector3(0, 2, 5);
     
     // let fpsInterval = 1000 / 150; // 33.33ms
@@ -463,10 +583,10 @@ function updateLight() {
         requestAnimationFrame(animate);
 
 
-        if (!player || !player.chassisBody || !player.vehicle) {
+/*         if (!player || !player.chassisBody || !player.vehicle) {
             renderer.render(scene, camera);
             return;
-        }
+        } */
         const now = time;
         const elapsed = now - then;
 
@@ -476,9 +596,9 @@ function updateLight() {
 
         // updateWheelFriction(player.vehicle);
              
-        const velocity = player.chassisBody.velocity.length(); // in meters/second
+/*         const velocity = player.chassisBody.velocity.length(); // in meters/second
         const speedKmh = velocity * 3.6; // convert to km/h
-        document.getElementById("speedDisplay").textContent = speedKmh.toFixed(1) + " km/h";
+        document.getElementById("speedDisplay").textContent = speedKmh.toFixed(1) + " km/h"; */
         cannonDebugger.update();
         stats.begin();
           // Don't step physics on the very first frame
@@ -490,14 +610,18 @@ function updateLight() {
         }
         lastTime = time;
         frameCount++;
-        updateControls();
 
-        syncVehicleModel(player);
-        syncVehicleModel(player1);
+        if (player && player.chassisBody) {
+            updateControls();
+            updateCamera(camera, controls, player, cameraOffset);
+        }
+
+        // syncVehicleModel(player);
+        // syncVehicleModel(player1);
 
 
 
-        const lerpFactor = 0.1;
+/*         const lerpFactor = 0.1;
         const maxSpeed = 0.5;
         // const cameraOffset = new THREE.Vector3(0, 2, 5);
         const bodyPos = new THREE.Vector3().copy(player.chassisBody.position);
@@ -508,30 +632,28 @@ function updateLight() {
         smoothSpeed += (currentSpeed - smoothSpeed) * smoothing;
 
         const speedFactor = Math.min(smoothSpeed / maxSpeed, 1);
-        const lerpAtSpeed = THREE.MathUtils.lerp(lerpFactor, 1, speedFactor);
+        const lerpAtSpeed = THREE.MathUtils.lerp(lerpFactor, 1, speedFactor); */
+        // updateControls(player, deltaTime); // <-- pass player & delta
+       
+        
 
-        if (!isUserInteracting && !isUserZooming) {
-            camera.position.lerp(desiredCameraPos, lerpAtSpeed);
-            controls.target.lerp(bodyPos, lerpFactor);
-            camera.lookAt(bodyPos);
-        } else {
-            controls.update();
-        }
+        const w = 20;
+const h = 15;
+const d = 0;
 
+// grab pos and rot
+const px = player.chassisBody.position.x.toFixed(4);
+const py = player.chassisBody.position.y.toFixed(1); // constant 7.5?
+const pz = player.chassisBody.position.z.toFixed(4);
 
-        socket.emit('move', {
-            id: socket.id,
-            x: player.chassisBody.position.x,
-            y: player.chassisBody.position.y,
-            z: player.chassisBody.position.z,
-            qx: player.chassisBody.quaternion.x,
-            qy: player.chassisBody.quaternion.y,
-            qz: player.chassisBody.quaternion.z,
-            qw: player.chassisBody.quaternion.w,
-            vx: player.chassisBody.velocity.x,
-            vy: player.chassisBody.velocity.y,
-            vz: player.chassisBody.velocity.z,
-            });
+const rx = player.chassisBody.rotation.x.toFixed(4);
+const ry = player.chassisBody.rotation.y.toFixed(13);
+const rz = player.chassisBody.rotation.z.toFixed(4);
+
+// print exactly like your wall statement
+console.log(
+  `wall(${w}, ${h}, ${d}, {x:${px}, y: 7.5, z:${pz}}, {x:${rx}, y:${ry}, z:${rz}});`
+);
 
         updateLight()
         stats.end(); 
