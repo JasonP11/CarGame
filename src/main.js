@@ -233,11 +233,12 @@ function processOutline(mesh) {
 }
  */
 gltfLoader.load(
-  'https://raw.githubusercontent.com/JackAlt3/CarGame/main/border2.glb',
+  'https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_propertion.glb',
   (gltf) => {
     console.log("✅ GLTF loaded:", gltf);
 
     const borderObj = gltf.scene;
+    borderObj.position.set(0, 2.5, 0);
 
     scene.add(borderObj); // Add visual model
   },
@@ -523,8 +524,8 @@ function updateLight() {
     // }
 
     function updateControls() {
-  const speed = 0.05;
-  const rotSpeed = 0.01;
+  const speed = 0.03;
+  const rotSpeed = 0.005;
     const speed1 = 0.2;
   const rotSpeed1 = 0.03;
 

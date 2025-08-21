@@ -85,7 +85,7 @@ export function createVehicleAt(scene, world, x, y, z, gltfLoader, wheelGLBUrl =
         wireframe: true
     });
     const chassisBody = new THREE.Mesh(geometry, material);
-    chassisBody.position.set(x, y, z);
+    chassisBody.position.set(-112, 7.5, 21);
     chassisBody.rotation.set(0, Math.PI / 2, 0);
     scene.add(chassisBody);
 
