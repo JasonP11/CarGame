@@ -540,7 +540,7 @@ function updateLight() {
             vy: player.chassisBody.velocity.y,
             vz: player.chassisBody.velocity.z,
             });
-
+            console.log(player.chassisBody.position.x,player.chassisBody.position.z);
         updateLight()
         stats.end(); 
         renderer.render(scene, camera);
