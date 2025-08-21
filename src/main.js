@@ -153,6 +153,7 @@ let path, physicsBody;
 
 gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_propertion.glb', (gltf) => {
     const collisionMesh = gltf.scene;
+    collisionMesh.scale.set(1.1, 1.1, 1.1);
     collisionMesh.position.set(0, 2.5, 0);
     // scene.add(path);
 
@@ -182,8 +183,23 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
 
     scene.add(path);
 
-
 });
+
+      const carMaterial = new CANNON.Material("carMaterial");
+    const wallMaterial = new CANNON.Material("wallMaterial");
+
+    const carWallContact = new CANNON.ContactMaterial(carMaterial, wallMaterial, {
+    friction: 0.0,
+    restitution: 0.0,
+    });
+    world.addContactMaterial(carWallContact);
+
+    // Attach to world so vehicle.js can access
+    world.carMaterial = carMaterial;
+    world.wallMaterial = wallMaterial;
+
+    worldborder(world);
+
 
     worldborder(world);
             

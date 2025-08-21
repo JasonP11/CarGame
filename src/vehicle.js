@@ -3,7 +3,7 @@ import * as THREE from 'three';        // (only if you use THREE in this file)
 
 export function createVehicleAt(scene, world, x, y, z, gltfLoader, wheelGLBUrl = 'https://raw.githubusercontent.com/JackAlt3/CarGame/main/wheels.glb') {
     const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.3, 2));
-    const chassisBody = new CANNON.Body({ mass: 150 });
+    const chassisBody = new CANNON.Body({ mass: 150 ,material: world.carMaterial});
     chassisBody.addShape(chassisShape);
     chassisBody.position.set(x, y, z);
     chassisBody.angularDamping = 0.5;
