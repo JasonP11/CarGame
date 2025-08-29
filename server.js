@@ -6,7 +6,21 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static('public'));
+// app.use(express.static('public'));
+
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Serve Vite build files
+app.use(express.static(join(__dirname, 'dist')));
+
+// Fallback: always send index.html for SPA routes
+app.get('*', (req, res) => {
+  res.sendFile(join(__dirname, 'dist', 'index.html'));
+});
 
 // Store rooms
 const rooms = {}; 
