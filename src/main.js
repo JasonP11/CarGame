@@ -17,6 +17,30 @@ const socket = io();
 const world = new CANNON.World();
 world.gravity.set(0, -9.82, 0); // Earth gravity
 
+document.getElementById("startButton").addEventListener("click", () => {
+  if (window.PLAYER_NAME) {
+    console.log("Registering player:", window.PLAYER_NAME);
+    socket.emit("registerName", { name: window.PLAYER_NAME });
+  }
+});
+
+
+socket.on("playerList", ({ players, names }) => {
+  const playerListEl = document.getElementById("playerListDisplay");
+  playerListEl.innerHTML = "";
+
+  for (let id in players) {
+    const isMe = id === socket.id;
+    const playerName = names[id] || "Waiting..."; // ✅ get name from names object
+
+    const div = document.createElement("div");
+    div.textContent = isMe ? `You: ${playerName}` : `Opponent: ${playerName}`;
+
+    playerListEl.appendChild(div);
+  }
+});
+
+
 
 const cannonDebugger = CannonDebugger(scene, world, {
 color: 0x00ff00,
@@ -186,7 +210,17 @@ gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/road_pr
 
 });
 
-      const carMaterial = new CANNON.Material("carMaterial");
+    gltfLoader.load('https://raw.githubusercontent.com/JackAlt3/CarGame/main/border.glb', (gltf) => {
+    const border = gltf.scene;
+    border.scale.set(1, 1, 1);
+
+    border.position.set(0, 2.5, 0);;
+
+    scene.add(border);
+
+});
+
+    const carMaterial = new CANNON.Material("carMaterial");
     const wallMaterial = new CANNON.Material("wallMaterial");
 
     const carWallContact = new CANNON.ContactMaterial(carMaterial, wallMaterial, {
@@ -540,7 +574,6 @@ function updateLight() {
             vy: player.chassisBody.velocity.y,
             vz: player.chassisBody.velocity.z,
             });
-            console.log(player.chassisBody.position.x,player.chassisBody.position.z);
         updateLight()
         stats.end(); 
         renderer.render(scene, camera);

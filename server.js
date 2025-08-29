@@ -8,57 +8,90 @@ const io = socketIO(server);
 
 app.use(express.static('public'));
 
-const players = {};
+// Store rooms
+const rooms = {}; 
+// rooms[roomId] = {
+//    players: { socketId: { x, y, z, ... } },
+//    names: { socketId: "PlayerName" }
+// }
+
+function findOrCreateRoom() {
+    for (let roomId in rooms) {
+        const playerCount = Object.keys(rooms[roomId].players).length;
+        if (playerCount < 2) return roomId;
+    }
+    const newRoomId = `room_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    rooms[newRoomId] = { players: {}, names: {} };
+    return newRoomId;
+}
 
 io.on('connection', socket => {
-  console.log(`Player connected: ${socket.id}`);
+    console.log(`Player connected: ${socket.id}`);
 
-  // Initialize player position
-  players[socket.id] = { x: 0, y: 0, z: 0 };
+    const roomId = findOrCreateRoom();
+    socket.join(roomId);
 
-  // Log current players for new join
-  console.log("All players:", players);
+    // Initialize player
+    rooms[roomId].players[socket.id] = { x: 0, y: 0, z: 0 };
+    rooms[roomId].names[socket.id] = "Waiting...";
 
-  // Listen for movement updates
-/*   socket.on('move', data => {
-    players[socket.id] = data;
+    // Send initial player list
+    io.to(roomId).emit("playerList", {
+        players: rooms[roomId].players,
+        names: rooms[roomId].names
+    });
 
-    console.log(`📍 Player ${socket.id}: x=${data.x}, y=${data.y}, z=${data.z}`);
-  });
- */
-  socket.on('move', data => {
-  players[socket.id] = data;
+    // Register player name
+    socket.on("registerName", ({ name }) => {
+        if (!rooms[roomId] || !name) return;
 
-  console.log(`📍 Player ${socket.id}: x=${data.x}, y=${data.y}, z=${data.z}`);
+        rooms[roomId].names[socket.id] = name;
 
-  // Broadcast to all other clients
-  socket.broadcast.emit('playerMoved', {
-        id: socket.id,
-        x: data.x,
-        y: data.y,
-        z: data.z,
-        vx: data.vx,
-        vy: data.vy,
-        vz: data.vz,
-        qx: data.qx,
-        qy: data.qy,
-        qz: data.qz,
-        qw: data.qw
-  });
-  });
+        io.to(roomId).emit("playerList", {
+            players: rooms[roomId].players,
+            names: rooms[roomId].names
+        });
 
-  socket.on('playerWon', () => {
-  console.log(`Player ${socket.id} has Won`);
-  });
+        console.log(`Player ${socket.id} is now called "${name}" in ${roomId}`);
+    });
 
+    // Movement updates (merge, don't replace)
+    socket.on('move', data => {
+        if (!rooms[roomId] || !rooms[roomId].players[socket.id]) return;
 
-  // On disconnect, remove player
-  socket.on('disconnect', () => {
-    console.log(`Player disconnected: ${socket.id}`);
-    delete players[socket.id];
-  });
+        Object.assign(rooms[roomId].players[socket.id], data);
+
+        socket.to(roomId).emit('playerMoved', {
+            id: socket.id,
+            ...data
+        });
+    });
+
+    // Player won
+    socket.on('playerWon', () => {
+        console.log(`Player ${socket.id} won in ${roomId}`);
+        io.to(roomId).emit('playerWon', { id: socket.id });
+    });
+
+    // Disconnect
+    socket.on('disconnect', () => {
+        console.log(`Player disconnected: ${socket.id}`);
+        delete rooms[roomId].players[socket.id];
+        delete rooms[roomId].names[socket.id];
+
+        if (Object.keys(rooms[roomId].players).length === 0) {
+            delete rooms[roomId];
+        } else {
+            io.to(roomId).emit("playerList", {
+                players: rooms[roomId].players,
+                names: rooms[roomId].names
+            });
+        }
+    });
 });
 
-server.listen(3000, () => {
-  console.log('✅ Server running at http://localhost:3000');
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
